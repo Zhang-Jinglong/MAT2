@@ -87,7 +87,7 @@ model.train(epochs=30)
 ```Python
 # test_data = data
 # Calculate the reconstructed consensus gene expression.
-rec = mat2.evaluate(test_data)
+rec = model.evaluate(test_data)
 # Your own downstream analysis.
 ```
 
