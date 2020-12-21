@@ -4,7 +4,7 @@ setup(
     name='MAT2',
     version='0.0.1',
     packages=['MAT2'],
-    url='',
+    url='https://github.com/Zhang-Jinglong/MAT2.git',
     license='MIT',
     author='Zhang-Jinglong',
     author_email='',
