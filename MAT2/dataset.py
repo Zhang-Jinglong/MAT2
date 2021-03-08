@@ -12,6 +12,10 @@ class Preprocess:
             data: pd.Series,
             metadata: pd.Series,
             norm: str = None):
+        metadata = metadata.replace(
+            r'^\s+$', np.nan, regex=True).replace(
+            r'', np.nan, regex=True)
+
         self.norm = norm
         data = np.array(data, dtype=np.float).T
         if norm:
@@ -35,8 +39,8 @@ class TrainingData:
             metadata: pd.Series,
             mode: str,
             anchor: pd.Series = None,
-            norm='l1',
-            gamma: float = 0.0,
+            norm: str = 'l1',
+            mix_rate: float = 1.0,
             shuffle: bool = True,
             num_workers: int = 2,
             batch_size: int = 256,
@@ -47,9 +51,9 @@ class TrainingData:
         anchor = Triplet(
             pre_data,
             mode=mode,
+            mix_rate=mix_rate,
             anchor=anchor,
-            record=False,
-            gamma=gamma)
+            record=False)
         label_code = pd.Categorical(metadata['batch']).codes
 
         self.anchor = anchor

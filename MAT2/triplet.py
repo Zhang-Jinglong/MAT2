@@ -5,14 +5,9 @@ import pandas as pd
 from torch.utils.data import Dataset
 
 
-def _distance(cell1, cell2):
-    d = np.linalg.norm(cell1 - cell2, ord=2)
-    return d
-
-
 def get_encoder_anchor_list(metadata: pd.Series):
     annotation = metadata
-    annotation_group = annotation.groupby(["batch", "type"]).groups
+    annotation_group = annotation.dropna().groupby(["batch", "type"]).groups
     annotation_group_keys = list(annotation_group.keys())
 
     positive_anchor = defaultdict(list)
@@ -27,7 +22,9 @@ def get_encoder_anchor_list(metadata: pd.Series):
             positive_anchor[(batch, cell_type)].append(positive_match)
         else:
             positive_anchor[(batch, cell_type)].append(type_match)
-        negative_anchor[(batch, cell_type)].append(type_mismatch)
+        negative_match = np.intersect1d(type_mismatch,
+                                        np.where(~annotation.isna().any(1)))
+        negative_anchor[(batch, cell_type)].append(negative_match)
     return positive_anchor, negative_anchor
 
 
@@ -56,9 +53,10 @@ class EncoderSupervisedTriplet:
         self._data = normalized_data.dataset
         self._metadata = normalized_data.metadata
         pos_anchor, neg_anchor = get_encoder_anchor_list(
-            normalized_data.metadata[['batch', "type"]])
+            self._metadata[['batch', "type"]])
         self.pos_anchor = pos_anchor
         self.neg_anchor = neg_anchor
+        self.type_na = self._metadata.isna()['type']
 
     def triplet(self, index):
         index_batch = self._metadata["batch"][index]
@@ -86,8 +84,7 @@ class EncoderManualTriplet:
     def __init__(
             self,
             normalized_data,
-            anchor: pd.Series,
-            gamma: float = 0.0):
+            anchor: pd.Series):
         self._data = normalized_data.dataset
         pos_anchor = defaultdict(list)
         neg_anchor = defaultdict(list)
@@ -102,7 +99,6 @@ class EncoderManualTriplet:
 
         self.pos_anchor = pos_anchor
         self.neg_anchor = neg_anchor
-        self._gamma = gamma
 
     def triplet(self, index):
         cell = self._data[index]
@@ -115,23 +111,12 @@ class EncoderManualTriplet:
                 neg_index, neg_score = self.neg_anchor[index][np.random.randint(
                     neg_num)]
             else:
-                times = 0
-                while True:
-                    times += 1
-                    neg_index = np.random.randint(len(self._data))
-                    neg_dist = _distance(
-                        self._data[neg_index], self._data[index])
-                    pos_dist = _distance(
-                        self._data[pos_index], self._data[index])
-                    if neg_index != index and \
-                            neg_index != pos_index and \
-                            neg_dist > self._gamma * pos_dist:
-                        neg_score = 1.0
-                        break
-                    if times > 200:
-                        neg_index = index
-                        neg_score = -pos_score
-                        break
+                neg_index = np.random.randint(len(self._data))
+                if neg_index != index and neg_index != pos_index:
+                    neg_score = 1.0
+                else:
+                    neg_index = index
+                    neg_score = -pos_score
             pos_cell = self._data[pos_index]
             neg_cell = self._data[neg_index]
         else:
@@ -146,6 +131,38 @@ class EncoderManualTriplet:
             anchor=dict(cell=cell, index=index),
             positive=dict(cell=pos_cell, index=pos_index, score=pos_score),
             negative=dict(cell=neg_cell, index=neg_index, score=neg_score))
+
+
+class EncoderTriplet:
+    def __init__(
+            self,
+            normalized_data,
+            anchor: pd.Series,
+            mode: str,
+            mix_rate: float):
+
+        self.s_triplet, self.m_triplet = None, None
+        if mode == "supervised" or mode == 'semi-supervised':
+            self.s_triplet = EncoderSupervisedTriplet(
+                normalized_data=normalized_data)
+        if mode == 'manual' or mode == 'semi-supervised':
+            self.m_triplet = EncoderManualTriplet(
+                normalized_data=normalized_data,
+                anchor=anchor)
+        self._mode = mode
+        self._mix_rate = mix_rate
+
+    def triplet(self, index):
+        if self._mode == "supervised":
+            return self.s_triplet.triplet(index)
+        elif self._mode == "manual":
+            return self.m_triplet.triplet(index)
+        elif self._mode == "semi-supervised":
+            p_sup = 1.0 / (1.0 + self._mix_rate)
+            if ~self.s_triplet.type_na[index] and \
+                    np.random.random() <= p_sup:
+                return self.s_triplet.triplet(index)
+            return self.m_triplet.triplet(index)
 
 
 class DecoderTriplet:
@@ -180,19 +197,14 @@ class Triplet(Dataset):
     def __init__(self,
                  normalized_data,
                  mode: str,
+                 mix_rate: float,
                  anchor: pd.Series = None,
-                 record: bool = False,
-                 gamma: float = 0.0):
+                 record: bool = False):
         self.cell_num = len(normalized_data.dataset)
-        if mode == "supervised":
-            self.en_triplet = EncoderSupervisedTriplet(
-                normalized_data=normalized_data)
-        elif mode == 'manual':
-            self.en_triplet = EncoderManualTriplet(
-                normalized_data=normalized_data,
-                anchor=anchor,
-                gamma=gamma)
-
+        self.en_triplet = EncoderTriplet(normalized_data=normalized_data,
+                                         anchor=anchor,
+                                         mode=mode,
+                                         mix_rate=mix_rate)
         self.de_triplet = DecoderTriplet(normalized_data)
         self._stage = 'encoder'
         self._record = record

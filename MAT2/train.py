@@ -25,12 +25,12 @@ class BuildMAT2(nn.Module):
             use_gpu: bool = True,
             anchor: pd.Series = None,
             norm: str = 'l1',
-            gamma: float = 0.0,
+            mix_rate: float = 1.0,
             weight_decay: float = 0.01):
         super().__init__()
 
         # check input
-        mode_list = ['supervised', 'manual']
+        mode_list = ['supervised', 'semi-supervised', 'manual']
         if mode not in mode_list:
             print('Please specify a correct mode for triplet building!')
             raise IOError
@@ -39,15 +39,19 @@ class BuildMAT2(nn.Module):
             raise IOError
         if 'cluster' not in metadata.columns:
             metadata['cluster'] = metadata['batch']
-        if mode == 'manual':
+        if anchor is not None:
             p_col = anchor.columns
-            if 'cell1' not in p_col or 'cell2' not in p_col or 'score' not in p_col:
+            if anchor.shape[0] == 0 or \
+                    'cell1' not in p_col or \
+                    'cell2' not in p_col or \
+                    'score' not in p_col:
                 print('Please specify a correct file for anchors!')
                 raise IOError
-        elif mode == 'supervised':
+        if mode == 'supervised' or mode == 'semi-supervised':
             if 'type' not in metadata.columns:
                 print('Please check whether there is a \'type\' column in metadata!')
                 raise IOError
+
         self.mode = mode
 
         # set torch.device: cpu / single gpu
@@ -64,12 +68,12 @@ class BuildMAT2(nn.Module):
             metadata=metadata,
             mode=mode,
             anchor=anchor,
+            mix_rate=mix_rate,
             shuffle=True,
             num_workers=num_workers,
             batch_size=batch_size,
             pin_memory=use_gpu,
-            norm=norm,
-            gamma=gamma)
+            norm=norm)
 
         # set network
         gene_num = len(data)

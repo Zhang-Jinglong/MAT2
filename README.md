@@ -82,6 +82,19 @@ model = BuildMAT2(
 model.train(epochs=30)
 ```
 
+When providing part of cell type annotations, run in semi-supervised mode:
+
+```Python
+model = BuildMAT2(
+    data=data,
+    metadata=metadata,
+    anchor=anchor,
+    num_workers=2,
+    use_gpu=True,
+    mode='semi-supervised')
+model.train(epochs=30)
+```
+
 ### Testing
 
 ```Python
