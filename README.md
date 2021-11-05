@@ -107,7 +107,7 @@ rec = model.evaluate(test_data)
 ## Citation
 
  @article{
-    title={MAT<sup>2</sup>: manifold alignment of single-cell transcriptomes with cell triplets}, 
+    title={MAT2: manifold alignment of single-cell transcriptomes with cell triplets}, 
     volume={37}, 
     ISSN={1367-4803}, 
     DOI={10.1093/bioinformatics/btab250}, 
