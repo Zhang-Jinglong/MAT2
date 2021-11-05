@@ -104,3 +104,16 @@ rec = model.evaluate(test_data)
 # Your own downstream analysis.
 ```
 
+## Citation
+
+@article{
+    title={MAT<sup>2</sup>: manifold alignment of single-cell transcriptomes with cell triplets}, 
+    volume={37}, 
+    ISSN={1367-4803}, 
+    DOI={10.1093/bioinformatics/btab250}, 
+    number={19}, 
+    journal={Bioinformatics}, 
+    author={Zhang, Jinglong and Zhang, Xu and Wang, Ying and Zeng, Feng and Zhao, Xing-Ming}, 
+    year={2021}, 
+    pages={3263–3269} 
+}
