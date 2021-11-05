@@ -106,7 +106,7 @@ rec = model.evaluate(test_data)
 
 ## Citation
 
-@article{
+ @article{
     title={MAT<sup>2</sup>: manifold alignment of single-cell transcriptomes with cell triplets}, 
     volume={37}, 
     ISSN={1367-4803}, 
@@ -116,4 +116,4 @@ rec = model.evaluate(test_data)
     author={Zhang, Jinglong and Zhang, Xu and Wang, Ying and Zeng, Feng and Zhao, Xing-Ming}, 
     year={2021}, 
     pages={3263–3269} 
-}
+ }
